@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Medical Assistant</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="chat-wrapper">
+
+    <!-- Header -->
+    <div class="chat-header">
+      <img src="https://cdn-icons-png.flaticon.com/512/4712/4712027.png" class="avatar" />
+      <div class="chat-info">
+        <h3>AI Medical Assistant</h3>
+        <p>Ask me anything health-related!</p>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="chat-body" id="chatbox">
+      <!-- Messages will dynamically appear here -->
+    </div>
+
+    <!-- Input -->
+    <div class="chat-footer">
+      <form id="chat-form">
+        <input type="text" id="user-input" placeholder="Type your message..." autocomplete="off" />
+        <button type="submit"><i class="fas fa-paper-plane"></i></button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>
+    // Scroll to latest message
+    const scrollToBottom = () => {
+      const chatbox = document.getElementById('chatbox');
+      chatbox.scrollTop = chatbox.scrollHeight;
+    };
+
+    // Format bot response
+    const formatText = (text) => {
+      return text
+        .replace(/\*(.*?)\*/g, '<strong>$1</strong>')     // *bold*
+        .replace(/_(.*?)_/g, '<em>$1</em>')               // _italic_
+        .replace(/(\r\n|\r|\n)/g, '<br>')                 // New lines
+        .replace(/(\+|\*)\s*/g, '<br>&bull; ')            // Bullet points
+        .replace(/(<br>\s*){2,}/g, '<br><br>');           // Avoid double breaks
+    };
+
+    // Load previous chat history on page load
+    $(document).ready(function () {
+      $.get("/history", function (data) {
+        data.forEach(pair => {
+          $('#chatbox').append(`
+            <div class="message sent message-animate">
+              <div class="text">${formatText(pair.user)}</div>
+            </div>
+            <div class="message received message-animate">
+              <div class="text">${formatText(pair.bot)}</div>
+            </div>
+          `);
+        });
+        scrollToBottom();
+      });
+    });
+
+    // Submit form handler
+    $('#chat-form').submit(function (e) {
+      e.preventDefault();
+      const userInput = $('#user-input').val().trim();
+      if (!userInput) return;
+
+      $('#chatbox').append(`
+        <div class="message sent message-animate">
+          <div class="text">${userInput}</div>
+        </div>
+      `);
+
+      $('#chatbox').append(`
+        <div class="message received typing" id="typing">
+          <div class="text">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+        </div>
+      `);
+
+      $('#user-input').val('');
+      scrollToBottom();
+
+      $.post('/get', { msg: userInput }, function (data) {
+        $('#typing').remove();
+        const formatted = formatText(data.response || data);
+        $('#chatbox').append(`
+          <div class="message received message-animate">
+            <div class="text">${formatted}</div>
+          </div>
+        `);
+        scrollToBottom();
+      });
+    });
+  </script>
+</body>
+</html>
